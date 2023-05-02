@@ -1,0 +1,50 @@
+pin led[0] C40;
+pin led[1] C43;
+pin led[2] C46;
+pin led[3] C49;
+
+pin p1_button[0] C11 pullup;
+pin p1_button[1] C8 pullup;
+pin p1_button[2] C5 pullup;
+pin p1_button[3] C2 pullup;
+
+pin p2_button[0] C12 pullup;
+pin p2_button[1] C9 pullup;
+pin p2_button[2] C6 pullup;
+pin p2_button[3] C3 pullup;
+
+//first 2 rows 8 -> first row top : 8 
+//second row -> bottom : 6
+pin p1_score[9] A28;
+pin p1_score[11] A31;
+pin p1_score[10] A34;
+pin p1_score[3] A37;
+pin p1_score[4] A40;
+pin p1_score[2] A43;
+pin p1_score[13] A27;
+pin p1_score[7] A30;
+pin p1_score[12] A33;
+pin p1_score[8] A36;
+pin p1_score[1] A39;
+pin p1_score[5] A42;
+pin p1_score[0] A45;
+pin p1_score[6] A48;
+
+//first two rows B
+pin p2_score[9] B28;
+pin p2_score[11] B31;
+pin p2_score[10] B34;
+pin p2_score[3] B37;
+pin p2_score[4] B40;
+pin p2_score[2] B43;
+pin p2_score[13] B27;
+pin p2_score[7] B30;
+pin p2_score[12] B33;
+pin p2_score[8] B36;
+pin p2_score[1] B39;
+pin p2_score[5] B42;
+pin p2_score[0] B45;
+pin p2_score[6] B48;
+
+pin playerled[0] D12;
+pin playerled[1] D11;
