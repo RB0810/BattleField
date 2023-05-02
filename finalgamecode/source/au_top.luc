@@ -1,0 +1,50 @@
+module au_top (
+    input clk,              // 100MHz clock
+    input rst_n,
+    input usb_rx,           // USB->Serial input
+    output usb_tx,          // USB->Serial output
+    output led[4],
+    input p1_button[4],
+    input p2_button[4],
+    output p1_score[14],
+    output p2_score[14],
+    output playerled[2]
+  ) {
+  
+  sig rst;  // reset signal
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+    button_conditioner buttoncond_p1[4];
+    edge_detector buttondetector_p1[4](#RISE(0), #FALL(1)); //detect on falling edge only
+    button_conditioner buttoncond_p2[4];
+    edge_detector buttondetector_p2[4](#RISE(0), #FALL(1)); //detect on falling edge only
+    beta beta(.rst(rst));
+  }
+  
+  always {
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+    
+    
+    usb_tx = usb_rx;        // loop serial port
+    
+    buttoncond_p1.in = p1_button;
+    buttondetector_p1.in = buttoncond_p1.out;
+    beta.p1_btn = buttondetector_p1.out;
+    
+    buttoncond_p2.in = p2_button;
+    buttondetector_p2.in = buttoncond_p2.out;
+    beta.p2_btn = buttondetector_p2.out;
+    
+    
+    led = beta.led; 
+    playerled = beta.player_led;                  
+    p2_score = beta.p2_score;          
+    p1_score = beta.p1_score;
+    
+            
+  }
+}

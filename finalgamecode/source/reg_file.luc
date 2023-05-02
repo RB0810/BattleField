@@ -1,0 +1,80 @@
+//the regfile for all game information
+module reg_file (
+    input clk,  // clock
+    input rst,  // reset
+    input write_address[4], // write address
+    input we, // write enable
+    input data[16], // data in
+    
+    
+    input read_address_a[4], //address port a 
+    input read_address_b[4], //address port b
+    output out_a[16], //read port a
+    output out_b[16], //read port b
+    
+    output p1score[14],
+    output p2score[14]
+    
+  )
+
+{
+  .clk(clk){
+    .rst(rst){
+    
+      dff p1btn[3]; //register to store p1 button press id
+      dff p2btn[3]; //register to store p2 button press id
+      dff prevdef_btnid[3]; //register to store previous button pressed by defender id
+      dff p1_score[16]; //register to store p1 score
+      dff p2_score[16]; //register to store p2 score
+      dff tempF[16]; //temporary extra register to store values from CMPEQ, CMPLT, CMPLTEQ functions of ALU to be checked and branched later on      
+    }
+  }
+  
+  rom_sevenseg romp1;
+  rom_sevenseg romp2;
+
+  always {    
+  
+    //write port
+    if (we){
+      case(write_address){
+        b0000 : p1btn.d = data[2:0];
+        b0001 : p2btn.d = data[2:0];
+        b0010 : prevdef_btnid.d = data[2:0];
+        b0100 : p1_score.d = data;
+        b0101 : p2_score.d = data;
+        b1111 : tempF.d = data;
+      }
+    }
+    
+      
+    //read port a
+    case(read_address_a){
+        b0000 : out_a = $unsigned(p1btn.q);
+        b0001 : out_a = $unsigned(p2btn.q);
+        b0010 : out_a = $unsigned(prevdef_btnid.q);
+        b0100 : out_a = $unsigned(p1_score.q);
+        b0101 : out_a = $unsigned(p2_score.q);
+        b1111 : out_a = $unsigned(tempF.q);
+        default : out_a = 0;
+    }
+    
+    //read port b
+    case(read_address_b){
+        b0000 : out_b = $unsigned(p1btn.q);
+        b0001 : out_b = $unsigned(p2btn.q);
+        b0010 : out_b = $unsigned(prevdef_btnid.q);
+        b0100 : out_b = $unsigned(p1_score.q);
+        b0101 : out_b = $unsigned(p2_score.q);
+        b1111 : out_b = $unsigned(tempF.q);
+        default : out_b = 0;
+    }
+     
+    //we get the rom value (sequence needed for seven seg for both p1score and p2score)
+    romp1.address = p1_score.q[6:0];
+    romp2.address = p2_score.q[6:0];
+    p1score = romp1.value; //p1score is connected directly to the p1_score register
+    p2score = romp2.value; //p2score is connected directly to the p2_score register
+    
+  }
+}

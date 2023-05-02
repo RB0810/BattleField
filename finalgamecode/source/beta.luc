@@ -1,0 +1,103 @@
+module beta(
+    input clk, //clock
+    input rst, //reset)
+    
+    input p1_btn[4],
+    input p2_btn[4],
+      
+    output led[4],
+    output p1_score[14],
+    output p2_score[14],
+    output player_led[2]
+          
+    )
+
+{
+    sig inputAlu_a[16];
+    sig inputAlu_b[16];
+  
+    alu game_alu;
+    rom_led rom;
+    
+    .clk(clk){       
+        .rst(rst){
+            fsm_game game_controlunit;
+            reg_file players;      
+        }    
+    }
+    
+  
+    always{
+  
+        //buttons for players are assigned:
+        game_controlunit.p1_button = p1_btn;
+        game_controlunit.p2_button = p2_btn;
+    
+        //Setup register file
+        players.we = game_controlunit.we;
+        players.write_address = game_controlunit.wa;
+        players.read_address_a = game_controlunit.ra;
+        players.read_address_b = game_controlunit.rb;
+    
+        game_controlunit.datarb = players.out_b;
+   
+        
+        //asel multiplexer
+        case(game_controlunit.asel){
+          b0 : inputAlu_a = $unsigned(players.out_a);
+          b1 : inputAlu_a = $unsigned(7b1100011);
+          default: inputAlu_a = 0;
+        }
+    
+        //bsel multiplexer
+        case(game_controlunit.bsel){
+          b0 : inputAlu_b = $unsigned(players.out_b);
+          b1 : inputAlu_b = b0;
+          default: inputAlu_b = b0;
+        }
+    
+        //alu unit
+        game_alu.a = inputAlu_a;
+        game_alu.b = inputAlu_b;
+        game_alu.alufn_signal = game_controlunit.alufn;
+    
+    
+        //wdsel multiplexer
+        case(game_controlunit.wdsel){
+          b000 : players.data = $unsigned(game_alu.out);
+          b001 : players.data = b001;
+          b010 : players.data = b010;          
+          b011 : players.data = b011;
+          b100 : players.data = b100;
+          b101 : players.data = b0;
+          default: players.data = game_alu.out;
+        }
+    
+    rom.address = game_controlunit.led; 
+    led = rom.value; //led (sequence to display) is connected to output led coming from fsm
+    
+    p1_score = players.p1score; //seven seg p1_score is connected to output of regfile p1score
+    p2_score = players.p2score; //seven seg p2_score is connected to output of regfile p2score
+    player_led = game_controlunit.player_led; //output of player_led is connected to the 
+      
+        
+    
+    
+        
+          
+        
+  
+    
+
+    
+
+    
+  
+    
+            
+      
+    
+  
+    
+    
+    

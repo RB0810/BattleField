@@ -1,0 +1,569 @@
+module fsm_game (
+    input clk,  // clock
+    input rst,  // reset
+  
+    //player buttons
+    input p1_button[4],
+    input p2_button[4],
+    
+    input datarb[16],
+       
+    //output command signals (to beta - datapath)
+    output alufn[6], //ALU function
+    output asel[1], // ASEL
+    output bsel[1], //BSEL
+    output wdsel[3], //WDSEL button
+    output wa[4], //write address
+    output ra[4], //ra
+    output rb[4], //rb
+    output we, //write enable
+  
+    //Display
+    output led[3],
+    output player_led[2]
+  ) 
+
+  {
+    
+    .clk(clk){
+      counter slowClock(#SIZE(1), #DIV(27), .rst(rst)); //slow clock
+      edge_detector slowClockEdge;
+      
+  
+      fsm game_fsm={
+        START,
+        STARTSETP1SCOREZERO,
+        STARTSETP2SCOREZERO,
+        SETPREVDEFBTNREGTOZERO,
+        SETP1REGTOZERO,
+        SETP2REGTOZERO,
+        P1BUTTONPRESS,
+        P2BUTTONPRESS,
+        CHECKP1P2MATCH,
+        BRANCHDEF_ATTWON,
+        CHECKP1BUTTONREGTOPREVDEFBTNREG,
+        BRANCHORD_REPDEFWON,
+        INCREMENTP1SCOREBYBTNID,
+        INCREMENTP1SCOREBYFIVE,
+        SETNEWDEF1TOPREVBTNIDX,
+        CHECKP1SCORE,
+        CHECKP1SCORE_BRANCH,
+        SHOWP1BUTTON_RISE,
+        SHOWP1BUTTON_FALL,
+        SHOWP1BUTTON_RISE2,
+        SWITCH_RISE,
+        SWITCH_FALL,
+        SWITCH_RISE2,
+        SETPREVDEFBTNREGTOZERO2,
+        SETP1REGTOZERO2,
+        SETP2REGTOZERO2,
+        P2BUTTONPRESS2,
+        P1BUTTONPRESS2,
+        CHECKP1P2MATCH2,
+        BRANCHDEF_ATTWON2,
+        CHECKP2BUTTONREGTOPREVDEFBTNREG,
+        BRANCHORD_REPDEFWON2,
+        INCREMENTP2SCOREBYBTNID,
+        INCREMENTP2SCOREBYFIVE,
+        SETNEWDEF1TOPREVBTNIDX2,
+        CHECKP2SCORE,
+        CHECKP2SCORE_BRANCH,
+        SHOWP2BUTTON_RISE,
+        SHOWP2BUTTON_FALL,
+        SHOWP2BUTTON_RISE2,
+        WINNER,
+        WINNER_BRANCH1,
+        WINNER_BRANCH2,
+        WINNER1,
+        WINP1P2,
+        WINP1,
+        WINP2
+      
+      };
+      
+    }
+    
+  
+      always {
+        
+        slowClockEdge.in = slowClock.value;
+
+        
+        // standard setting unless otherwise overwritten by each case 
+        alufn = 0;
+        asel = 0; 
+        bsel = 0;
+        we = 0;
+        wa = 1111;
+        ra = 0000;
+        rb = 0000;
+        wdsel = 0;
+        
+        led = 3b0;
+        player_led = 2b00;
+          
+          case(game_fsm.q){
+            
+            game_fsm.START: //press any button to start
+              if(p1_button[3] | p1_button[2] | p1_button[1] | p1_button[0] | p2_button[3] | p2_button[2] | p2_button[1] | p2_button[0]){
+                game_fsm.d = game_fsm.STARTSETP1SCOREZERO;}
+              else{
+                game_fsm.d = game_fsm.START;}
+    
+            game_fsm.STARTSETP1SCOREZERO: //set p1score reg to zero
+              we = 1;  
+              wa = b0100; //p1score reg
+              wdsel = b101; //zero
+              game_fsm.d = game_fsm.STARTSETP2SCOREZERO;
+          
+            game_fsm.STARTSETP2SCOREZERO: //set p2score reg to zero
+              we = 1;  
+              wa = b0101; //p2score reg
+              wdsel = b101; //zero
+              game_fsm.d = game_fsm.SETPREVDEFBTNREGTOZERO;
+            
+            game_fsm.SETPREVDEFBTNREGTOZERO: //set prev defender button reg to zero
+              we = 1;  
+              wa = b0010; //previous defender button reg 
+              wdsel = b101; //zero
+              game_fsm.d = game_fsm.SETP1REGTOZERO;          
+            
+            game_fsm.SETP1REGTOZERO: //set p1 button press reg to zero
+              we=1;
+              wa=b0000; //p1 button press reg
+              wdsel=b101; //zero
+              game_fsm.d=game_fsm.SETP2REGTOZERO;
+            
+            game_fsm.SETP2REGTOZERO: //set p2 button press reg to zero
+              we=1;
+              wa=b0001; //p2 button press reg to zero
+              wdsel=b101; //zero
+              game_fsm.d=game_fsm.P1BUTTONPRESS;
+                    
+            game_fsm.P1BUTTONPRESS: //wait for p1 to press putton, store button id of button pressed in p1 button press reg
+              if(p1_button[3] || p1_button[2] || p1_button[1] || p1_button[0]){      
+                  if(p1_button[3]){
+                    wdsel = b100;} //buttonid(4)
+                  else if(p1_button[2]){
+                    wdsel = b011;} //buttonid(3)
+                  else if(p1_button[1]){
+                    wdsel = b010;} //buttonid(2)
+                  else if(p1_button[0]){
+                    wdsel = b001;} //buttonid(1)
+                  we = 1;
+                  wa = b0000; //p1 button press reg
+                  game_fsm.d = game_fsm.P2BUTTONPRESS;
+              }
+              
+              else{
+                  player_led = 2b01;
+                  game_fsm.d = game_fsm.P1BUTTONPRESS;}
+          
+           game_fsm.P2BUTTONPRESS: //wait for p2 to press putton, store button id of button pressed in p2 button press reg
+              if(p2_button[3] || p2_button[2] || p2_button[1] || p2_button[0]){      
+                  if(p2_button[3]){
+                    wdsel = b100;} //buttonid(4)
+                  else if(p2_button[2]){
+                    wdsel = b011;} //buttonid(3)
+                  else if(p2_button[1]){
+                    wdsel = b010;} //buttonid(2)
+                  else if(p2_button[0]){
+                    wdsel = b001;} //buttonid(1)
+                  we = 1;
+                  wa = b0001; //p2 button press reg
+                  game_fsm.d = game_fsm.CHECKP1P2MATCH;
+              }
+              else{
+                player_led = 2b10;
+                game_fsm.d = game_fsm.P2BUTTONPRESS;}
+        
+            game_fsm.CHECKP1P2MATCH: //check if p1 and p2 pressed the same button
+                alufn = 110011; //CMPEQ
+                ra = b0000; //p1 button press reg
+                rb = b0001; //p2 button press reg
+                asel = b0;
+                bsel = b0;
+                we = b1;
+                wa = b1111; //tempreg
+                wdsel = b000;
+                game_fsm.d = game_fsm.BRANCHDEF_ATTWON;
+            
+            game_fsm.BRANCHDEF_ATTWON: //if same button presses, switch roles, else increse P1 points
+                rb=b1111; //tempreg
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.SWITCH_RISE;
+                }
+                else{
+                  game_fsm.d = game_fsm.CHECKP1BUTTONREGTOPREVDEFBTNREG;
+                }
+        
+            game_fsm.CHECKP1BUTTONREGTOPREVDEFBTNREG: //check if p1 pressed same button as the previous button he pressed
+                alufn = 110011; //CMPEQ
+                ra = b0000; //p1 button press reg
+                rb = b0010; //defender previous button reg
+                asel = b0;
+                bsel = b0;
+                we = b1;
+                wa = b1111; //tempreg
+                wdsel = b000;
+                game_fsm.d = game_fsm.BRANCHORD_REPDEFWON;
+             
+           game_fsm.BRANCHORD_REPDEFWON: //if same button pressed, give bonus points, else no bonus
+                rb=b1111; //tempreg
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.INCREMENTP1SCOREBYFIVE;
+                }
+                else{ 
+                  game_fsm.d = game_fsm.INCREMENTP1SCOREBYBTNID;
+                } 
+          
+            game_fsm.INCREMENTP1SCOREBYFIVE: //add bonus points
+                asel = b0;
+                ra = b0100; //p1score reg
+                alufn = b001100; //INCREMENT BY 5 (new function added by us)
+                wdsel = b0000;
+                wa = b0100; //p1score reg
+                we = b1;
+                game_fsm.d = game_fsm.INCREMENTP1SCOREBYBTNID;
+            
+            game_fsm.INCREMENTP1SCOREBYBTNID: //add points corresponding to the button id
+                rb = b0000; //p1 button press reg
+                ra = b0100; //p1score reg
+                asel = b0; 
+                alufn = b000000; //ADD
+                wdsel = b000;
+                wa = b0100; //p1score reg
+                we = b1;
+                game_fsm.d = game_fsm.CHECKP1SCORE;
+          
+            game_fsm.CHECKP1SCORE: //check if p1score >= 99
+                asel = b1; //99
+                rb = b0100; //p1score reg
+                bsel = b0;
+                alufn = b110111; //CMPLTEQ
+                wdsel = b000;
+                wa = b1111; //tempreg
+                we = b1;
+                game_fsm.d = game_fsm.CHECKP1SCORE_BRANCH;
+            
+            game_fsm.CHECKP1SCORE_BRANCH: //if check condition true, P1 wins, else, go to next round
+                rb = b1111;
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.WINP1;}
+                else{
+                  game_fsm.d = game_fsm.SETNEWDEF1TOPREVBTNIDX;}
+
+            game_fsm.SETNEWDEF1TOPREVBTNIDX: //set previous defender button press to the button pressed by P1 in this round
+                ra = b0000; //p1 button press reg
+                asel = b0;
+                alufn = b011010; //A
+                we = b1;
+                wa = b0010; //defender button press reg 
+                wdsel = b000;
+                game_fsm.d = game_fsm.SHOWP1BUTTON_RISE;
+
+           //states below display the button pressed by P1 for one clock cycle of the slow clock     
+            game_fsm.SHOWP1BUTTON_RISE:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SHOWP1BUTTON_FALL;}
+              else{                    
+                rb=b0000;
+                led = datarb[2:0];
+                game_fsm.d = game_fsm.SHOWP1BUTTON_RISE;}
+                        
+            game_fsm.SHOWP1BUTTON_FALL:
+              if(slowClockEdge.out == b0){
+                 game_fsm.d = game_fsm.SHOWP1BUTTON_RISE2;}
+              else{                    
+                rb=b0000;
+                led = datarb[2:0];
+                game_fsm.d=game_fsm.SHOWP1BUTTON_FALL;}                  
+                
+            game_fsm.SHOWP1BUTTON_RISE2:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SETP1REGTOZERO;}
+              else{                    
+                rb=b0000;
+                led = datarb[2:0];
+                game_fsm.d=game_fsm.SHOWP1BUTTON_RISE2;}
+          
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+        
+            //states below light up all the leds present on the game to indicate that P2 guessed the right button P1 pressed, and that the roles are now being reversed
+            //this happens for one clock cycle of the slow clock     
+            game_fsm.SWITCH_RISE:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SWITCH_FALL;}
+              else{  
+                led = 3b101;                 
+                player_led = 2b11;
+                game_fsm.d = game_fsm.SWITCH_RISE;}
+                        
+            game_fsm.SWITCH_FALL:
+              if(slowClockEdge.out == b0){
+                 game_fsm.d = game_fsm.SWITCH_RISE2;}
+              else{                    
+                led = 3b101;
+                player_led = 2b11;
+                game_fsm.d=game_fsm.SWITCH_FALL;}                  
+                
+            game_fsm.SWITCH_RISE2:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SETPREVDEFBTNREGTOZERO2;}
+              else{                    
+                led = 3b101;
+                player_led = 2b11;
+                game_fsm.d=game_fsm.SWITCH_RISE2;}
+ 
+ ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
+            //states below are similar to the ones defined when P1 was the defender and P2 attacker, with the roles reversed                             
+            game_fsm.SETPREVDEFBTNREGTOZERO2: //set previous button pressed by defender to zero
+              we = 1;  
+              wa = b0010; //defender previous button press reg
+              wdsel = b101; //zero
+              game_fsm.d = game_fsm.SETP1REGTOZERO2;          
+            
+            game_fsm.SETP1REGTOZERO2: //set p1 button press reg to zero
+              we=1;
+              wa=b0000; //p1 button reg
+              wdsel=b101;//zero
+              game_fsm.d=game_fsm.SETP2REGTOZERO2;
+            
+            game_fsm.SETP2REGTOZERO2: //set p2 button press reg to zero
+              we=1;
+              wa=b0001; //p2 button reg
+              wdsel=b101; //zero
+              game_fsm.d=game_fsm.P2BUTTONPRESS2;
+        
+            game_fsm.P2BUTTONPRESS2: //wait for p2 to press putton, store button id of button pressed in p2 button press reg
+              if(p2_button[3] || p2_button[2] || p2_button[1] || p2_button[0]){      
+                  if(p2_button[3]){
+                    wdsel = b100;} //buttonid(4)
+                  else if(p2_button[2]){
+                    wdsel = b011;} //buttonid(3)
+                  else if(p2_button[1]){
+                    wdsel = b010;} //buttonid(2)
+                  else if(p2_button[0]){
+                    wdsel = b001;} //buttonid(1)
+                  we = 1;
+                  wa = b0001; //p2 button press reg
+                  game_fsm.d = game_fsm.P1BUTTONPRESS2;
+              }
+              else{
+                player_led = 2b10;
+                game_fsm.d = game_fsm.P2BUTTONPRESS2;}
+                    
+            game_fsm.P1BUTTONPRESS2: //wait for p1 to press button, store button id of button pressed in p1 button press reg
+              if(p1_button[3] || p1_button[2] || p1_button[1] || p1_button[0]){      
+                  if(p1_button[3]){
+                    wdsel = b100;} //buttonid(4)
+                  else if(p1_button[2]){
+                    wdsel = b011;} //buttonid(3)
+                  else if(p1_button[1]){
+                    wdsel = b010;} //buttonid(2)
+                  else if(p1_button[0]){
+                    wdsel = b001;} //buttonid(1)
+                  we = 1;
+                  wa = b0000; //p1 button press reg
+                  game_fsm.d = game_fsm.CHECKP1P2MATCH2;
+              }
+              
+              else{
+                  player_led = 2b01;
+                  game_fsm.d = game_fsm.P1BUTTONPRESS2;}
+        
+            game_fsm.CHECKP1P2MATCH2: //check if p1 and p2 pressed the same button
+                alufn = 110011; //CMPEQ
+                ra = b0000; //p1 button press reg
+                rb = b0001; //p2 button press reg
+                asel = b0;
+                bsel = b0;
+                we = b1;
+                wa = b1111; //tempreg
+                wdsel = b000;
+                game_fsm.d = game_fsm.BRANCHDEF_ATTWON2;
+            
+            game_fsm.BRANCHDEF_ATTWON2: //if yes, check who won game, else increase p2 points
+                rb=b1111; //tempreg
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.WINNER;
+                }
+                else{
+                  game_fsm.d = game_fsm.CHECKP2BUTTONREGTOPREVDEFBTNREG;
+                }
+        
+            game_fsm.CHECKP2BUTTONREGTOPREVDEFBTNREG: //check if button pressed by p2 is same as the button pressed in previous round
+                alufn = 110011; //CMPEQ
+                ra = b0001; //p2 button press reg
+                rb = b0010; //defender previous button press reg
+                asel = b0;
+                bsel = b0;
+                we = b1;
+                wa = b1111; //tempreg
+                wdsel = b000;
+                game_fsm.d = game_fsm.BRANCHORD_REPDEFWON2;
+             
+           game_fsm.BRANCHORD_REPDEFWON2: //if yes, give bonus points, else no bonus points
+                rb=b1111; //tempreg
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.INCREMENTP2SCOREBYFIVE;
+                }
+                else{ 
+                  game_fsm.d = game_fsm.INCREMENTP2SCOREBYBTNID;
+                } 
+          
+            game_fsm.INCREMENTP2SCOREBYFIVE: //add bonus points to p2score
+                asel = b0;
+                ra = b0101; //p2score reg
+                alufn = b001100; //INCREMENT BY 5 (new alu function implemented by us)
+                wdsel = b000;
+                wa = b0101; //p2score reg
+                we = b1;
+                game_fsm.d = game_fsm.INCREMENTP2SCOREBYBTNID;
+            
+            game_fsm.INCREMENTP2SCOREBYBTNID: //add points corresponding to the button pressed by p2
+                rb = b0001; //p2 button press reg
+                ra = b0101; //p2score reg
+                asel = b0;
+                alufn = b000000; //ADD
+                wdsel = b000;
+                wa = b0101; //p2score reg
+                we = b1;
+                game_fsm.d = game_fsm.CHECKP2SCORE;
+        
+             game_fsm.CHECKP2SCORE: //check if p2score <= p1score
+                asel = b0;
+                ra = b0101; //p2score reg
+                rb = b0100; //p1score reg
+                bsel = b0;
+                alufn = b110111; //CMPLTEQ
+                wdsel = b000;
+                wa = b1111; //tempreg
+                we = b1;
+                game_fsm.d = game_fsm.CHECKP2SCORE_BRANCH;
+            
+            game_fsm.CHECKP2SCORE_BRANCH: //if yes, go to next round, else p2 wins
+                rb = b1111;
+                if(datarb[0]){
+                  game_fsm.d = game_fsm.SETNEWDEF1TOPREVBTNIDX2;}
+                else{
+                  game_fsm.d = game_fsm.WINP2;}
+                
+            game_fsm.SETNEWDEF1TOPREVBTNIDX2: //set previous defender button press to the button pressed by P1 in this round
+                ra = b0001; //p2 button press reg
+                asel = b0;
+                alufn = b011010; //A
+                we = b1;
+                wa = b0010; //defender previous button press reg
+                wdsel = b000;
+                game_fsm.d = game_fsm.SHOWP2BUTTON_RISE;
+           
+            //states below display the button pressed by P1 for one clock cycle of the slow clock     
+            game_fsm.SHOWP2BUTTON_RISE:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SHOWP2BUTTON_FALL;}
+              else{                    
+                rb=b0001;
+                led = datarb[2:0];
+                game_fsm.d = game_fsm.SHOWP2BUTTON_RISE;}
+                        
+            game_fsm.SHOWP2BUTTON_FALL:
+              if(slowClockEdge.out == b0){
+                 game_fsm.d = game_fsm.SHOWP2BUTTON_RISE2;}
+              else{                    
+                rb=b0001;
+                led = datarb[2:0];
+                game_fsm.d=game_fsm.SHOWP2BUTTON_FALL;}                  
+                
+            game_fsm.SHOWP2BUTTON_RISE2:
+              if(slowClockEdge.out == b1){
+                 game_fsm.d = game_fsm.SETP1REGTOZERO2;}
+              else{                    
+                rb=b0001;
+                led = datarb[2:0];
+                game_fsm.d=game_fsm.SHOWP2BUTTON_RISE2;}
+          
+/////////////////////////////////////////////////////////////////////////////////////////
+
+ //states below check if p1 won the game, p2 won the game or is it a draw       
+           
+  game_fsm.WINNER: //check if p1score = p2score
+      ra = b0100; //p1score reg
+      asel=b0;        
+      rb = b0101; //p2score reg
+      bsel = b0;
+      alufn = 110011; //CMPEQ
+      we = b1;
+      wa = b1111; //tempreg
+      game_fsm.d = game_fsm.WINNER_BRANCH1;
+ 
+      game_fsm.WINNER_BRANCH1: //if yes, it is a draw else check who won
+        rb=b1111;
+        if(datarb[0]){
+          game_fsm.d = game_fsm.WINP1P2;}
+        else{
+           game_fsm.d = game_fsm.WINNER1;}
+          
+      game_fsm.WINNER1: //check if p1score < p2score
+        ra = b0100; //p1score reg
+        asel = b0; 
+        rb = b0101; //p2score reg
+        bsel = b0;
+        alufn = b110101; //CMPLT
+        we = b1;
+        wa = b1111; //tempreg
+        game_fsm.d = game_fsm.WINNER_BRANCH2;
+        
+      game_fsm.WINNER_BRANCH2: //if yes, p2 wins, else p1 wins
+        rb=b1111;
+        if(datarb[0]){
+          game_fsm.d = game_fsm.WINP2;}
+        else{
+          game_fsm.d = game_fsm.WINP1;}
+          
+  //states below show who won the game, the led corresponding to the winner lights up 
+  //press any button to start new game      
+  game_fsm.WINP1P2:
+      if(p1_button[3] | p1_button[2] | p1_button[1] | p1_button[0] | p2_button[3] | p2_button[2] | p2_button[1] | p2_button[0]){
+        game_fsm.d = game_fsm.STARTSETP1SCOREZERO;}
+      else{
+        led=3b101;
+        player_led = 2b11;
+        game_fsm.d = game_fsm.WINP1P2;}        
+
+                
+  game_fsm.WINP1:
+      if(p1_button[3] | p1_button[2] | p1_button[1] | p1_button[0] | p2_button[3] | p2_button[2] | p2_button[1] | p2_button[0]){
+        game_fsm.d = game_fsm.STARTSETP1SCOREZERO;}
+      else{
+        led=3b101;
+        player_led = 2b01;
+        game_fsm.d = game_fsm.WINP1;}            
+
+                       
+  game_fsm.WINP2:
+      if(p1_button[3] | p1_button[2] | p1_button[1] | p1_button[0] | p2_button[3] | p2_button[2] | p2_button[1] | p2_button[0]){
+        game_fsm.d = game_fsm.STARTSETP1SCOREZERO;}
+      else{
+        led=3b101;
+        player_led = 2b10;
+        game_fsm.d = game_fsm.WINP2;}           
+               
+          
+      
+      
+          
+        
+    
+      
+        
+       
+
+      
+        
+            
+      
+        
+    
+  

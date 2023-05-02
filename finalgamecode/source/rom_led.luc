@@ -1,0 +1,11 @@
+module rom_led (
+    input address[3],
+    output value[4]
+  ) {
+ //this file contains the sequence in which the led needs to light up, it can be references accorind to the button ids
+  const LED = {4b1111, 4b1000, 4b0100, 4b0010, 4b0001, 4b0000};
+  
+  always {
+    value = LED[address];
+  }
+}
